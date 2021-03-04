@@ -4,7 +4,7 @@ dirr = [[0, 1], [1, 0], [-1, 0], [0, -1], [-1, -1], [1, 1], [-1, 1], [1, -1]]
 
 
 class cell:
-    def __init__(self,position, current_state="C", surrounding_mines=-1, identified_safe=-1, identified_mines=-1,
+    def __init__(self, position, current_state="C", surrounding_mines=-1, identified_safe=-1, identified_mines=-1,
                  hidden_squares=-1):
         self.current_state = current_state
         self.position = position
@@ -13,15 +13,15 @@ class cell:
         self.identified_mines = identified_mines
         self.hidden_squares = hidden_squares
 
-
     def __str__(self):
         return str(self.current_state)
 
     def mark_safe(self):
+        print("Check: {}".format(self.position))
         self.current_state = "S"
-        #self.hidden_squares = find_in_neighbours(agent_board, self.position, "C")
-        #self.identified_safe = find_in_neighbours(agent_board, self.position, "S")
-        #self.identified_mines = find_in_neighbours(agent_board, self.position, "M")
+        # self.hidden_squares = find_in_neighbours(agent_board, self.position, "C")
+        # self.identified_safe = find_in_neighbours(agent_board, self.position, "S")
+        # self.identified_mines = find_in_neighbours(agent_board, self.position, "M")
 
     def mark_mine(self):
         self.current_state = "M"
@@ -79,17 +79,10 @@ class Knowledge_Base:
         for info in self.knowledge_bank:
             info.mark_mine(cell)
 
-    def add_knowledge(self, cell, clue, new_knowledge):
+    def add_knowledge(self, cell, clue, new_knowledge, agent_board):
         self.moves.add(cell)
         self.safes.add(cell)
         self.knowledge_bank.append(new_knowledge)
-
-        for knowledge in self.knowledge_bank:
-            for k_cell in knowledge.cells.copy():
-                if k_cell in self.safes or k_cell in self.mines:
-                    knowledge.cells.remove(k_cell)
-                    if k_cell in self.mines:
-                        knowledge.count -= 1
 
         # adding to safe and mine
         for knowledge in self.knowledge_bank:
@@ -102,6 +95,13 @@ class Knowledge_Base:
                     self.safes.add(k_cell)
                 self.knowledge_bank.remove(knowledge)
 
+        for knowledge in self.knowledge_bank:
+            for k_cell in knowledge.cells.copy():
+                if k_cell in self.safes or k_cell in self.mines:
+                    knowledge.cells.remove(k_cell)
+                    if k_cell in self.mines:
+                        knowledge.count -= 1
+
         knowledge_to_add = []
         for knowledge1 in self.knowledge_bank.copy():
             for knowledge2 in self.knowledge_bank.copy():
@@ -109,19 +109,18 @@ class Knowledge_Base:
                     continue
                 if knowledge1.cells.issubset(knowledge2.cells):
                     new_cells = knowledge2.cells - knowledge1.cells
-                    new_count = knowledge2.count - knowledge1.count
+                    new_count = knowledge2.count - knowledge1.count  # new count is 0 then set all cells to safe.
                     new_sentence = Knowledge(new_cells, new_count)
                     knowledge_to_add.append(new_sentence)
                     self.knowledge_bank.remove(knowledge2)
-
         for k in knowledge_to_add:
             if k not in self.knowledge_bank:
                 self.knowledge_bank.append(k)
 
     def get_safe_move(self):
-        for cell in self.safes:
-            if cell not in self.moves:
-                return cell
+        for k_cell in self.safes:
+            if k_cell not in self.moves:  # self.visited
+                return k_cell
         return None
 
     def get_random_move(self, dim):
@@ -139,10 +138,8 @@ class Knowledge_Base:
                 continue
             if (i, j) in self.mines:
                 continue
-            return (i, j)
-
+            return [i, j]
         return None
-
 
 
 def check_remaining_mines(current_cell):
@@ -189,6 +186,7 @@ def set_hidden_neighbours(agent_board, position, to_set, list, unexplored_square
             list.append([x, y])
             unexplored_squares.remove([x, y])
 
+
 def fill_unexplored_squares(board_size):
     unexplored_squares = []
     for i in range(board_size):
@@ -204,12 +202,13 @@ def get_hidden_neighbour_positions(current_cell, agent_board):
     for direction in dirr:
         x = row + direction[0]
         y = col + direction[1]
-        if 0 <= x < board_size and 0 <= y < board_size and agent_board[x][y].current_state == "C":
-            pos.append((x,y))
+        if 0 <= x < board_size and 0 <= y < board_size:  # and agent_board[x][y].current_state == "C":
+            pos.append((x, y))
     return pos
 
 
-def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board, unexplored_squares):
+def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
+                  unexplored_squares):
     neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
     clue = get_surrounding_mines(solution_board, current_cell.position[0], current_cell.position[1], board_size)
     if len(neighbours) != 0:
@@ -217,7 +216,7 @@ def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, saf
         knowledge_base.append(new_knowledge)
 
     knowledge_base.append(Knowledge([(current_cell.position[0], current_cell.position[1])], 0))
-    #infer
+    # infer
     knowledge_to_add = []
     for sentence in knowledge_base:
         if len(sentence.cells) > 1:
@@ -236,7 +235,7 @@ def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, saf
                     explored_mines.append(agent_board[row][col])
                     agent_board[row][col].current_state = "M"
                     # unexplored_squares.remove([row,col])
-                    knowledge_to_add.append(Knowledge([(row,col)], 1))
+                    knowledge_to_add.append(Knowledge([(row, col)], 1))
                 knowledge_base.remove(sentence)
 
     for sentence1 in knowledge_base:
@@ -257,9 +256,8 @@ def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, saf
             knowledge_base.append(sentence)
 
 
-def ai_agent(board_size, solution_board, agent_board, total_mines):
+def ai_agent(board_size, solution_board, agent_board):
     AI_knowledge_base = Knowledge_Base()
-
     while len(AI_knowledge_base.visited) != board_size * board_size:
         print(AI_knowledge_base.mines)
         valid_move = AI_knowledge_base.get_safe_move()
@@ -271,14 +269,15 @@ def ai_agent(board_size, solution_board, agent_board, total_mines):
             neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
             clue = get_surrounding_mines(solution_board, current_cell[0], current_cell[1], board_size)
             curr_knowledge = Knowledge(neighbours, clue)
-            AI_knowledge_base.add_knowledge(current_cell,clue, curr_knowledge)
-            #add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board, unexplored_squares)
+            AI_knowledge_base.add_knowledge(current_cell, clue, curr_knowledge, agent_board)
+            # add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
+            # unexplored_squares)
         else:
-            #make random move
+            # make random move
             valid_move = AI_knowledge_base.get_random_move(board_size)
             if valid_move is None:
                 break
-            (row, col) = valid_move
+            [row, col] = valid_move
             current_cell = agent_board[row][col].position
             AI_knowledge_base.visited.add(current_cell)
 
@@ -288,22 +287,22 @@ def ai_agent(board_size, solution_board, agent_board, total_mines):
                 neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
                 clue = get_surrounding_mines(solution_board, current_cell[0], current_cell[1], board_size)
                 curr_knowledge = Knowledge(neighbours, clue)
-                AI_knowledge_base.add_knowledge(current_cell, clue, curr_knowledge)
-                # add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,unexplored_squares)
+                AI_knowledge_base.add_knowledge(current_cell, clue, curr_knowledge, agent_board)
+                # add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
+                # unexplored_squares)
             else:
                 # random-move detected a mine
-                (row,col) = valid_move
-                AI_knowledge_base.set_mins(valid_move)
+                (row, col) = valid_move
+                AI_knowledge_base.set_mins((row, col))
                 agent_board[row][col].mark_mine()
                 print("BOOM")
-
 
 
 def basic_agent(board_size, solution_board, agent_board):
     explored_mines = []
     explored_safe = []
     unexplored_squares = fill_unexplored_squares(board_size)
-    while len(explored_safe) + len(explored_mines) != board_size**2:
+    while len(explored_safe) + len(explored_mines) != board_size ** 2:
         [row, col] = get_random_cell(board_size, agent_board, unexplored_squares)
         unexplored_squares.remove([row, col])
         if solution_board[row][col] == 0:
@@ -315,21 +314,22 @@ def basic_agent(board_size, solution_board, agent_board):
             agent_board[row][col].identified_safe = find_in_neighbours(agent_board, [row, col], "S")
             agent_board[row][col].identified_mines = find_in_neighbours(agent_board, [row, col], "M")
             if check_remaining_mines(agent_board[row][col]):
-                set_hidden_neighbours(agent_board,[row, col], "M", explored_mines, unexplored_squares)
+                set_hidden_neighbours(agent_board, [row, col], "M", explored_mines, unexplored_squares)
             if check_remaining_safes(board_size, [row, col], agent_board[row][col]):
-                set_hidden_neighbours(agent_board,[row, col], "S", explored_safe, unexplored_squares)
+                set_hidden_neighbours(agent_board, [row, col], "S", explored_safe, unexplored_squares)
         else:
             print("BOOM")
             explored_mines.append([row, col])
             agent_board[row][col].current_state = "M"
     return agent_board
 
+
 def create_board(board_size):
     board = []
     for i in range(board_size):
         col = []
         for j in range(board_size):
-            col.append(cell((i,j)))
+            col.append(cell((i, j)))
         board.append(col)
     return board
 
@@ -411,4 +411,3 @@ if __name__ == '__main__':
     print(" ---------------------")
     ai_agent(board_size, game_board, agent_board, number_of_mines)
     printLine(agent_board)
-
