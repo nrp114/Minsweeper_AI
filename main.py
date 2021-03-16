@@ -1,8 +1,67 @@
 import random
 import copy
-
+import turtle
+from time import sleep
+import matplotlib.pyplot as plt
 dirr = [[0, 1], [1, 0], [-1, 0], [0, -1], [-1, -1], [1, 1], [-1, 1], [1, -1]]
 
+
+## GUI classes
+class wPen(turtle.Turtle):
+    def __init__(self):
+        turtle.Turtle.__init__(self)
+        self.shape("square")
+        self.color("white")
+        self.penup()
+        self.speed(20)
+
+
+class bPen(turtle.Turtle):
+    def __init__(self):
+        turtle.Turtle.__init__(self)
+        self.shape("square")
+        self.color("blue")
+        self.penup()
+        self.speed(20)
+
+
+class lbPen(turtle.Turtle):
+    def __init__(self):
+        turtle.Turtle.__init__(self)
+        self.shape("square")
+        self.color("navy")
+        self.penup()
+        self.speed(20)
+
+
+class oePen(turtle.Turtle):
+    def __init__(self):
+        turtle.Turtle.__init__(self)
+        self.shape("square")
+        self.color("orange")
+        self.penup()
+        self.speed(20)
+
+
+class pPen(turtle.Turtle):
+    def __init__(self):
+        turtle.Turtle.__init__(self)
+        self.shape("square")
+        self.color("red")
+        self.penup()
+        self.speed(20)
+
+
+class fPen(turtle.Turtle):
+    def __init__(self):
+        turtle.Turtle.__init__(self)
+        self.shape("square")
+        self.color("yellow")
+        self.penup()
+        self.speed(20)
+
+
+## EOF Gui classes
 
 class cell:
     def __init__(self, position, current_state="C", surrounding_mines=-1, identified_safe=-1, identified_mines=-1,
@@ -17,15 +76,19 @@ class cell:
     def __str__(self):
         return str(self.current_state)
 
-    def mark_safe(self):
-        #print("Check: {}".format(self.position))
+    def mark_safe(self, game_gui):
+        # print("Check: {}".format(self.position))
         self.current_state = "S"
+        if game_gui:
+            write_game(self.position[0], self.position[1], wpen)
         # self.hidden_squares = find_in_neighbours(agent_board, self.position, "C")
         # self.identified_safe = find_in_neighbours(agent_board, self.position, "S")
         # self.identified_mines = find_in_neighbours(agent_board, self.position, "M")
 
-    def mark_mine(self):
+    def mark_mine(self, game_gui):
         self.current_state = "M"
+        if game_gui:
+            write_game(self.position[0], self.position[1], oepen)
 
 
 class Knowledge:
@@ -38,17 +101,20 @@ class Knowledge:
             return True
         return False
 
-    def mark_safe(self, cell):
+    def mark_safe(self, cell, game_gui):
+        if game_gui:
+            write_game(cell[0], cell[1], wpen)
         if cell not in self.cells:
             return
         new_cells = set()
-
         for item in self.cells:
             if item != cell:
                 new_cells.add(item)
         self.cells = new_cells
 
-    def mark_mine(self, cell):
+    def mark_mine(self, cell, game_gui):
+        if game_gui:
+            write_game(cell[0], cell[1], oepen)
         if cell not in self.cells:
             return
         new_cells = set()
@@ -70,15 +136,19 @@ class Knowledge_Base:
         self.moves = set()
         self.visited = set()
 
-    def set_safe(self, cell):
+    def set_safe(self, cell, game_gui):
         self.safes.add(cell)
+        if game_gui:
+            write_game(cell[0], cell[1], wpen)
         for info in self.knowledge_bank:
-            info.mark_safe(cell)
+            info.mark_safe(cell, game_gui)
 
-    def set_mins(self, cell):
+    def set_mins(self, cell, game_gui):
         self.mines.add(cell)
+        if game_gui:
+            write_game(cell[0], cell[1], oepen)
         for info in self.knowledge_bank:
-            info.mark_mine(cell)
+            info.mark_mine(cell, game_gui)
 
     def add_knowledge(self, cell, clue, new_knowledge, agent_board):
         self.moves.add(cell)
@@ -154,7 +224,8 @@ def give_prob_based_on_position(position, agent_board, AI_knowledge_base):
             neighbour_count += 1
             if agent_board[x][y].current_state == "M" or position in AI_knowledge_base.mines:
                 mine_count += 1
-    return mine_count/neighbour_count
+    return mine_count / neighbour_count
+
 
 def insert_into_temp_prob(current_prob, location, temp_prob):
     if len(temp_prob) == 0:
@@ -170,12 +241,12 @@ def insert_into_temp_prob(current_prob, location, temp_prob):
 def get_best_random_move_based_on_prob(board_size, AI_knowledge_base, number_of_mines):
     temp_prob = []
     number_of_explored_cells = len(AI_knowledge_base.visited)
-    number_of_unexplored_cells = board_size*board_size - number_of_explored_cells
+    number_of_unexplored_cells = board_size * board_size - number_of_explored_cells
     number_of_mines_remaining = number_of_mines - len(AI_knowledge_base.mines)
 
     for i in range(board_size):
         for j in range(board_size):
-            item = (i,j)
+            item = (i, j)
             in_bank = False
             if item in AI_knowledge_base.mines:
                 continue
@@ -184,10 +255,10 @@ def get_best_random_move_based_on_prob(board_size, AI_knowledge_base, number_of_
             for knowledge in AI_knowledge_base.knowledge_bank:
                 if item in knowledge.cells:
                     current_prob = knowledge.count / len(knowledge.cells)
-                    temp_prob = insert_into_temp_prob(current_prob, item,  temp_prob)
+                    temp_prob = insert_into_temp_prob(current_prob, item, temp_prob)
                     in_bank = True
             if not in_bank:
-                current_prob = number_of_mines_remaining/number_of_unexplored_cells
+                current_prob = number_of_mines_remaining / number_of_unexplored_cells
                 temp_prob = insert_into_temp_prob(current_prob, item, temp_prob)
 
     if len(temp_prob) == 0:
@@ -230,13 +301,17 @@ def find_in_neighbours(agent_board, position, to_find):
     return counter
 
 
-def set_hidden_neighbours(agent_board, position, to_set, list, unexplored_squares):
+def set_hidden_neighbours(agent_board, position, to_set, list, unexplored_squares, draw_gui):
     global dirr
     for direction in dirr:
         x = position[0] + direction[0]
         y = position[1] + direction[1]
         if 0 <= x < board_size and 0 <= y < board_size and agent_board[x][y].current_state == "C":
             agent_board[x][y].current_state = to_set
+            if to_set == "M" and draw_gui:
+                write_game(x,y,oepen)
+            if to_set == "S" and draw_gui:
+                write_game(x, y, wpen)
             list.append([x, y])
             unexplored_squares.remove([x, y])
 
@@ -259,6 +334,7 @@ def get_hidden_neighbour_positions(current_cell, agent_board):
         if 0 <= x < board_size and 0 <= y < board_size:  # and agent_board[x][y].current_state == "C":
             pos.append((x, y))
     return pos
+
 
 """""
 def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
@@ -310,17 +386,19 @@ def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, saf
             knowledge_base.append(sentence)
 """""
 
-def ai_agent(board_size, solution_board, agent_board, make_smarter):
+
+def ai_agent(board_size, solution_board, agent_board, make_smarter, game_gui):
     AI_knowledge_base = Knowledge_Base()
     boom_count = 0
     while len(AI_knowledge_base.visited) != board_size * board_size:
-        #print(AI_knowledge_base.mines)
+        # print(AI_knowledge_base.mines)
+        sleep(0.5)
         valid_move = AI_knowledge_base.get_safe_move()
         if valid_move is not None:
             # there are safe cells that we can explore
             current_cell = valid_move
             AI_knowledge_base.visited.add(current_cell)
-            agent_board[current_cell[0]][current_cell[1]].mark_safe()
+            agent_board[current_cell[0]][current_cell[1]].mark_safe(game_gui)
             neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
             clue = get_surrounding_mines(solution_board, current_cell[0], current_cell[1], board_size)
             curr_knowledge = Knowledge(neighbours, clue)
@@ -341,7 +419,7 @@ def ai_agent(board_size, solution_board, agent_board, make_smarter):
 
             if solution_board[row][col] == 0:
                 # valid random-move, then update the knowledge base
-                agent_board[row][col].mark_safe()
+                agent_board[row][col].mark_safe(game_gui)
                 neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
                 clue = get_surrounding_mines(solution_board, current_cell[0], current_cell[1], board_size)
                 curr_knowledge = Knowledge(neighbours, clue)
@@ -351,19 +429,20 @@ def ai_agent(board_size, solution_board, agent_board, make_smarter):
             else:
                 # random-move detected a mine
                 (row, col) = valid_move
-                AI_knowledge_base.set_mins((row, col))
-                agent_board[row][col].mark_mine()
-                #print("BOOM")
+                AI_knowledge_base.set_mins((row, col),game_gui)
+                agent_board[row][col].mark_mine(game_gui)
+                # print("BOOM")
                 boom_count += 1
     return boom_count
 
 
-def basic_agent(board_size, solution_board, agent_board):
+def basic_agent(board_size, solution_board, agent_board, draw_gui, oepen, wpen):
     explored_mines = []
     explored_safe = []
     boom_count = 0
     unexplored_squares = fill_unexplored_squares(board_size)
     while len(explored_safe) + len(explored_mines) != board_size ** 2:
+        sleep(0.5)
         [row, col] = get_random_cell(board_size, agent_board, unexplored_squares)
         unexplored_squares.remove([row, col])
         if solution_board[row][col] == 0:
@@ -371,17 +450,21 @@ def basic_agent(board_size, solution_board, agent_board):
             clue = get_surrounding_mines(solution_board, row, col, board_size)
             agent_board[row][col].surrounding_mines = clue
             agent_board[row][col].current_state = "S"
+            if draw_gui:
+                write_game(row, col, wpen)
             agent_board[row][col].hidden_squares = find_in_neighbours(agent_board, [row, col], "C")
             agent_board[row][col].identified_safe = find_in_neighbours(agent_board, [row, col], "S")
             agent_board[row][col].identified_mines = find_in_neighbours(agent_board, [row, col], "M")
             if check_remaining_mines(agent_board[row][col]):
-                set_hidden_neighbours(agent_board, [row, col], "M", explored_mines, unexplored_squares)
+                set_hidden_neighbours(agent_board, [row, col], "M", explored_mines, unexplored_squares, draw_gui)
             if check_remaining_safes(board_size, [row, col], agent_board[row][col]):
-                set_hidden_neighbours(agent_board, [row, col], "S", explored_safe, unexplored_squares)
+                set_hidden_neighbours(agent_board, [row, col], "S", explored_safe, unexplored_squares, draw_gui)
         else:
-            # print("BOOM")
+            #print("BOOM")
             explored_mines.append([row, col])
             agent_board[row][col].current_state = "M"
+            if draw_gui:
+                write_game(row, col, oepen)
             boom_count += 1
     return boom_count
 
@@ -447,6 +530,19 @@ def printLine(printG):
         print()
 
 
+def write_game(x, y, pen):
+    screen_x = -288 + (y * 24)
+    screen_y = 288 - (x * 24)
+    pen.goto(screen_x, screen_y)
+    pen.stamp()
+
+
+def setup_game(dim, bpen):
+    for i in range(dim):
+        for j in range(dim):
+            write_game(i, j, bpen)
+
+
 if __name__ == '__main__':
 
     """""
@@ -469,24 +565,86 @@ if __name__ == '__main__':
     boom_count_basic = 0
     boom_count_normal = 0
     boom_count_smartai = 0
-    for i in range(100):
-        print(i)
-        game_board = create_game(board_size)
-        game_board = add_mines(game_board, board_size, number_of_mines)
 
-        agent_board = create_board(board_size)
-        #game_board_copy = copy.deepcopy(agent_board)
-        boom_count_basic += basic_agent(board_size, game_board, agent_board)
-        agent_board = create_board(board_size)
+    ## Activating GUI
 
-        boom_count_normal += ai_agent(board_size, game_board, agent_board, make_smarter=False)
-        agent_board = create_board(board_size)
-        boom_count_smartai += ai_agent(board_size, game_board, agent_board, make_smarter=True)
+    wn = turtle.Screen()
+    wn.bgcolor("black")
+    wn.title("Maze game")
+    wn.setup(600, 600)
+    wpen = wPen()
+    #fpen = fPen()
+    #lbpen = lbPen()
+    oepen = oePen()
+    #ppen = pPen()
+    bpen = bPen()
+    setup_game(board_size, bpen)
 
-        #printLine(agent_board)
-        #print(" 00  ")
-        #printLine(game_board)
-        #print(" ---------------------")
+    
+    # single minecraft game with GUI
+    game_board = create_game(board_size)
+    game_board = add_mines(game_board, board_size, number_of_mines)
 
-        #printLine(agent_board)
-    print(boom_count_basic, boom_count_normal , boom_count_smartai)
+    agent_board = create_board(board_size)
+    boom_count_basic += basic_agent(board_size, game_board, agent_board,True,oepen,wpen)
+    agent_board = create_board(board_size)
+    setup_game(board_size, bpen)
+
+    boom_count_normal += ai_agent(board_size, game_board, agent_board,False,True)
+    agent_board = create_board(board_size)
+
+    setup_game(board_size, bpen)
+    boom_count_smartai += ai_agent(board_size, game_board, agent_board,True, True)
+    print(boom_count_basic, boom_count_normal, boom_count_smartai)
+    wn.exitonclick()
+    exit(0)
+    """""
+    mines = []
+    basic_agent_success = []
+    ai_agent_success = []
+    smart_ai_success = []
+
+    number_of_mines = 1
+    while number_of_mines != 100:
+        print(number_of_mines)
+        boom_count_basic = 0
+        boom_count_normal = 0
+        boom_count_smartai = 0
+        for i in range(100):
+            # print(i)
+            game_board = create_game(board_size)
+            game_board = add_mines(game_board, board_size, number_of_mines)
+
+            agent_board = create_board(board_size)
+            # game_board_copy = copy.deepcopy(agent_board)
+            boom_count_basic += basic_agent(board_size, game_board, agent_board,False, None, None)
+            agent_board = create_board(board_size)
+
+            boom_count_normal += ai_agent(board_size, game_board, agent_board, False, False)
+            agent_board = create_board(board_size)
+            boom_count_smartai += ai_agent(board_size, game_board, agent_board, True, False)
+
+            # printLine(agent_board)
+            # print(" 00  ")
+            # printLine(game_board)
+            # print(" ---------------------")
+
+            # printLine(agent_board)
+        mines.append(number_of_mines)
+        basic_agent_success.append(100*(100*number_of_mines - boom_count_basic)/(100*number_of_mines))
+        ai_agent_success.append(100*(100*number_of_mines - boom_count_normal)/(100*number_of_mines))
+
+        smart_ai_success.append(100*(100*number_of_mines - boom_count_smartai)/(100*number_of_mines))
+        number_of_mines += 1
+        print(boom_count_basic, boom_count_normal, boom_count_smartai)
+
+    plt.plot(mines, basic_agent_success, label="Basic agent")
+    plt.plot(mines, ai_agent_success, label="AI agent")
+    plt.plot(mines, smart_ai_success, label="Smart AI agent")
+    plt.ylabel("Success Rate")
+    plt.xlabel("Number of mines")
+    plt.legend()
+    plt.show()
+    """""
+
+
