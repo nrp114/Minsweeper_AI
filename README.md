@@ -17,7 +17,7 @@ mark it, and never query that cell. If the agent can determine a cell is safe, i
 in the next round. A correctly operating agent should not flag a cell as mined when it in fact does
 not have a mine!
 * Traditionally, the game ends whenever the agent queries a cell with a mine in it - a final score being assessed
-in terms of number of mines safely identified.
+in terms of the number of mines safely identified.
 * However, extend your agent in the following way: if it queries a mine cell, the mine goes off, but the
 agent can continue, using the fact that a mine was discovered there to update its knowledge base (but not
 receiving a clue about surrounding cells). In this way the game can continue until the entire board is revealed
