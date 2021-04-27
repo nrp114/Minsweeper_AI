@@ -23,6 +23,6 @@ agent can continue, using the fact that a mine was discovered there to update it
 receiving a clue about surrounding cells). In this way the game can continue until the entire board is revealed
 - a final score being assessed in terms of number of mines safely identified out of the total number of mines.
 
-## A Youtube video to show the working of Basic Agent vs AI Agents
+## A Youtube video to show the working of Basic Agent vs AI Agents :- https://youtu.be/CgeuywBUGns
 
 [![IMAGE ALT TEXT HERE](https://i9.ytimg.com/vi/CgeuywBUGns/mq2.jpg?sqp=CKSpoYQG&rs=AOn4CLBGXb_W3G0ZcxkiSOKor6aKTwq44Q)](https://youtu.be/CgeuywBUGns)
