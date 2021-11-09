@@ -5,6 +5,7 @@ from time import sleep
 import matplotlib.pyplot as plt
 dirr = [[0, 1], [1, 0], [-1, 0], [0, -1], [-1, -1], [1, 1], [-1, 1], [1, -1]]
 
+# Author: Nisarg Patel
 
 ## GUI classes
 class wPen(turtle.Turtle):
@@ -195,12 +196,6 @@ class Knowledge_Base:
         return None
 
     def get_random_move(self, dim):
-        """
-        Returns a move to make on the Minesweeper board.
-        Should choose randomly among cells that:
-            1) have not already been chosen, and
-            2) are not known to be mines
-        """
         choice = random.Random()
         while len(self.safes) + len(self.mines) < dim * dim:
             i = choice.randint(0, dim - 1)
@@ -336,63 +331,12 @@ def get_hidden_neighbour_positions(current_cell, agent_board):
     return pos
 
 
-"""""
-def add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
-                  unexplored_squares):
-    neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
-    clue = get_surrounding_mines(solution_board, current_cell.position[0], current_cell.position[1], board_size)
-    if len(neighbours) != 0:
-        new_knowledge = Knowledge(neighbours, clue)
-        knowledge_base.append(new_knowledge)
-
-    knowledge_base.append(Knowledge([(current_cell.position[0], current_cell.position[1])], 0))
-    # infer
-    knowledge_to_add = []
-    for sentence in knowledge_base:
-        if len(sentence.cells) > 1:
-            if sentence.count == 0:
-                # add to safe
-                for cell_pos in sentence.cells:
-                    row = cell_pos[0]
-                    col = cell_pos[1]
-                    safe_cells.append(agent_board[row][col])
-                    knowledge_to_add.append(Knowledge([(row, col)], 0))
-                knowledge_base.remove(sentence)
-            elif sentence.count == len(sentence.cells):
-                for cell_pos in sentence.cells:
-                    row = cell_pos[0]
-                    col = cell_pos[1]
-                    explored_mines.append(agent_board[row][col])
-                    agent_board[row][col].current_state = "M"
-                    # unexplored_squares.remove([row,col])
-                    knowledge_to_add.append(Knowledge([(row, col)], 1))
-                knowledge_base.remove(sentence)
-
-    for sentence1 in knowledge_base:
-        for sentence2 in knowledge_base:
-            if sentence1 == sentence2:
-                continue
-            if sentence1.cells == sentence2.cells:
-                continue
-            if sentence1.cells.issubset(sentence2.cells):
-                new_cells = sentence2.cells - sentence1.cells
-                new_count = sentence2.count - sentence1.count
-                new_sentence = Knowledge(new_cells, new_count)
-                knowledge_to_add.append(new_sentence)
-                # knowledge_base.remove(sentence2)
-
-    for sentence in knowledge_to_add:
-        if sentence not in knowledge_base:
-            knowledge_base.append(sentence)
-"""""
-
-
 def ai_agent(board_size, solution_board, agent_board, make_smarter, game_gui):
     AI_knowledge_base = Knowledge_Base()
     boom_count = 0
     while len(AI_knowledge_base.visited) != board_size * board_size:
         # print(AI_knowledge_base.mines)
-        sleep(0.5)
+        # sleep(0.5)
         valid_move = AI_knowledge_base.get_safe_move()
         if valid_move is not None:
             # there are safe cells that we can explore
@@ -436,13 +380,63 @@ def ai_agent(board_size, solution_board, agent_board, make_smarter, game_gui):
     return boom_count
 
 
+def ai_agent_knowing_mines(board_size, solution_board, agent_board, number_of_mines,  make_smarter, game_gui):
+    AI_knowledge_base = Knowledge_Base()
+    boom_count = 0
+    while len(AI_knowledge_base.mines) != number_of_mines:
+        # print(AI_knowledge_base.mines)
+        # sleep(0.5)
+        valid_move = AI_knowledge_base.get_safe_move()
+        if valid_move is not None:
+            # there are safe cells that we can explore
+            current_cell = valid_move
+            AI_knowledge_base.visited.add(current_cell)
+            agent_board[current_cell[0]][current_cell[1]].mark_safe(game_gui)
+            neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
+            clue = get_surrounding_mines(solution_board, current_cell[0], current_cell[1], board_size)
+            curr_knowledge = Knowledge(neighbours, clue)
+            AI_knowledge_base.add_knowledge(current_cell, clue, curr_knowledge, agent_board)
+            # add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
+            # unexplored_squares)
+        else:
+            # make random move
+            valid_move = AI_knowledge_base.get_random_move(board_size)
+            # smart AI based on prob
+            if make_smarter:
+                valid_move = get_best_random_move_based_on_prob(board_size, AI_knowledge_base, number_of_mines)
+            if valid_move is None:
+                break
+            [row, col] = valid_move
+            current_cell = agent_board[row][col].position
+            AI_knowledge_base.visited.add(current_cell)
+
+            if solution_board[row][col] == 0:
+                # valid random-move, then update the knowledge base
+                agent_board[row][col].mark_safe(game_gui)
+                neighbours = get_hidden_neighbour_positions(current_cell, agent_board)
+                clue = get_surrounding_mines(solution_board, current_cell[0], current_cell[1], board_size)
+                curr_knowledge = Knowledge(neighbours, clue)
+                AI_knowledge_base.add_knowledge(current_cell, clue, curr_knowledge, agent_board)
+                # add_knowledge(knowledge_base, current_cell, explored_mines, agent_board, safe_cells, solution_board,
+                # unexplored_squares)
+            else:
+                # random-move detected a mine
+                (row, col) = valid_move
+                AI_knowledge_base.set_mins((row, col),game_gui)
+                agent_board[row][col].mark_mine(game_gui)
+                # print("BOOM")
+                boom_count += 1
+    return boom_count
+
+
+
 def basic_agent(board_size, solution_board, agent_board, draw_gui, oepen, wpen):
     explored_mines = []
     explored_safe = []
     boom_count = 0
     unexplored_squares = fill_unexplored_squares(board_size)
     while len(explored_safe) + len(explored_mines) != board_size ** 2:
-        sleep(0.5)
+        #sleep(0.5)
         [row, col] = get_random_cell(board_size, agent_board, unexplored_squares)
         unexplored_squares.remove([row, col])
         if solution_board[row][col] == 0:
@@ -545,38 +539,22 @@ def setup_game(dim, bpen):
 
 if __name__ == '__main__':
 
-    """""
-    try:
-        board_size = int(input("Enter Board size (d): "))
-        if board_size <= 0:
-            print("Board size should be a positive integer")
-            exit(0)
-        number_of_mines = int(input("Enter number of mines (n): "))
-        if number_of_mines > board_size * board_size or number_of_mines <= 0:
-            print("n should be a positive integer less than d*d ")
-            exit(0)
-    except:
-        print("Error")
-        exit(0)
-
-    """""
-    board_size = 10
+    # Input variables
+    board_size = 20
     number_of_mines = 25
+
+
     boom_count_basic = 0
     boom_count_normal = 0
     boom_count_smartai = 0
 
     ## Activating GUI
-
     wn = turtle.Screen()
     wn.bgcolor("black")
     wn.title("Maze game")
     wn.setup(600, 600)
     wpen = wPen()
-    #fpen = fPen()
-    #lbpen = lbPen()
     oepen = oePen()
-    #ppen = pPen()
     bpen = bPen()
     setup_game(board_size, bpen)
 
@@ -585,6 +563,7 @@ if __name__ == '__main__':
     game_board = create_game(board_size)
     game_board = add_mines(game_board, board_size, number_of_mines)
 
+    # AI agent
     agent_board = create_board(board_size)
     boom_count_basic += basic_agent(board_size, game_board, agent_board,True,oepen,wpen)
     agent_board = create_board(board_size)
@@ -593,12 +572,14 @@ if __name__ == '__main__':
     boom_count_normal += ai_agent(board_size, game_board, agent_board,False,True)
     agent_board = create_board(board_size)
 
+    # AI agent with Knowledge base
     setup_game(board_size, bpen)
     boom_count_smartai += ai_agent(board_size, game_board, agent_board,True, True)
     print(boom_count_basic, boom_count_normal, boom_count_smartai)
     wn.exitonclick()
     exit(0)
-    """""
+
+    # This is for accuracy purpose to get the success rate
     mines = []
     basic_agent_success = []
     ai_agent_success = []
@@ -623,13 +604,6 @@ if __name__ == '__main__':
             boom_count_normal += ai_agent(board_size, game_board, agent_board, False, False)
             agent_board = create_board(board_size)
             boom_count_smartai += ai_agent(board_size, game_board, agent_board, True, False)
-
-            # printLine(agent_board)
-            # print(" 00  ")
-            # printLine(game_board)
-            # print(" ---------------------")
-
-            # printLine(agent_board)
         mines.append(number_of_mines)
         basic_agent_success.append(100*(100*number_of_mines - boom_count_basic)/(100*number_of_mines))
         ai_agent_success.append(100*(100*number_of_mines - boom_count_normal)/(100*number_of_mines))
@@ -640,11 +614,11 @@ if __name__ == '__main__':
 
     plt.plot(mines, basic_agent_success, label="Basic agent")
     plt.plot(mines, ai_agent_success, label="AI agent")
-    plt.plot(mines, smart_ai_success, label="Smart AI agent")
+    plt.plot(mines, smart_ai_success, label="Smart AI agent (decision based on probability)")
     plt.ylabel("Success Rate")
     plt.xlabel("Number of mines")
     plt.legend()
     plt.show()
-    """""
+
 
 
